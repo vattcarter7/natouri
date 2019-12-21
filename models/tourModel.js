@@ -112,6 +112,15 @@ const tourSchema = new mongoose.Schema(
   }
 );
 
+// 1 means asc order and -1 means dec order
+
+// this is called 'single index'
+// tourSchema.index({ price: 1 });
+
+// this is called 'compound index'
+tourSchema.index({ price: 1, ratingsAverage: -1 });
+tourSchema.index({ slug: 1 });
+
 tourSchema.virtual('durationWeeks').get(function() {
   return this.duration / 7;
 });
