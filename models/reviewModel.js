@@ -1,11 +1,12 @@
+// review / rating / createdAt / ref to tour / ref to user
 const mongoose = require('mongoose');
 const Tour = require('./tourModel');
 
-const reviewSchema = mongoose.Schema(
+const reviewSchema = new mongoose.Schema(
   {
     review: {
       type: String,
-      require: [true, 'Review can not be empty']
+      required: [true, 'Review can not be empty!']
     },
     rating: {
       type: Number,
@@ -14,12 +15,12 @@ const reviewSchema = mongoose.Schema(
     },
     createdAt: {
       type: Date,
-      default: Date.now()
+      default: Date.now
     },
     tour: {
       type: mongoose.Schema.ObjectId,
       ref: 'Tour',
-      required: [true, 'Review must belong to a tour']
+      required: [true, 'Review must belong to a tour.']
     },
     user: {
       type: mongoose.Schema.ObjectId,
@@ -36,11 +37,18 @@ const reviewSchema = mongoose.Schema(
 reviewSchema.index({ tour: 1, user: 1 }, { unique: true });
 
 reviewSchema.pre(/^find/, function(next) {
+  // this.populate({
+  //   path: 'tour',
+  //   select: 'name'
+  // }).populate({
+  //   path: 'user',
+  //   select: 'name photo'
+  // });
+
   this.populate({
     path: 'user',
     select: 'name photo'
   });
-
   next();
 });
 
@@ -57,7 +65,7 @@ reviewSchema.statics.calcAverageRatings = async function(tourId) {
       }
     }
   ]);
-  //console.log(stats);
+  // console.log(stats);
 
   if (stats.length > 0) {
     await Tour.findByIdAndUpdate(tourId, {
@@ -73,22 +81,20 @@ reviewSchema.statics.calcAverageRatings = async function(tourId) {
 };
 
 reviewSchema.post('save', function() {
-  // 'this' keyword points to current review
-  // 'this.constructor' points to this document to call the statics calcAverageRatings function
+  // this points to current review
   this.constructor.calcAverageRatings(this.tour);
 });
 
 // findByIdAndUpdate
 // findByIdAndDelete
-// r stands for review
 reviewSchema.pre(/^findOneAnd/, async function(next) {
   this.r = await this.findOne();
-  //console.log(this.r);
+  // console.log(this.r);
   next();
 });
 
 reviewSchema.post(/^findOneAnd/, async function() {
-  // await this.findOne(); does not work here, query has already executed
+  // await this.findOne(); does NOT work here, query has already executed
   await this.r.constructor.calcAverageRatings(this.r.tour);
 });
 

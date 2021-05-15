@@ -1,1 +1,3 @@
-This project API end point URL https://documenter.getpostman.com/view/9817532/SWLYBWXq
+# Natours Application
+
+Built using modern technologies: node.js, express, mongoDB, mongoose and friends 😁

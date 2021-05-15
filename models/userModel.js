@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const mongoose = require('mongoose');
 const validator = require('validator');
-const bycrypt = require('bcryptjs');
+const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
   name: {
@@ -15,7 +15,10 @@ const userSchema = new mongoose.Schema({
     lowercase: true,
     validate: [validator.isEmail, 'Please provide a valid email']
   },
-  photo: String,
+  photo: {
+    type: String,
+    default: 'default.jpg'
+  },
   role: {
     type: String,
     enum: ['user', 'guide', 'lead-guide', 'admin'],
@@ -35,7 +38,7 @@ const userSchema = new mongoose.Schema({
       validator: function(el) {
         return el === this.password;
       },
-      message: 'Passwords are not the same'
+      message: 'Passwords are not the same!'
     }
   },
   passwordChangedAt: Date,
@@ -49,20 +52,20 @@ const userSchema = new mongoose.Schema({
 });
 
 userSchema.pre('save', async function(next) {
-  // only run this function if password was actually modified
+  // Only run this function if password was actually modified
   if (!this.isModified('password')) return next();
-  // Hash the password the cost of 12
-  this.password = await bycrypt.hash(this.password, 12);
+
+  // Hash the password with cost of 12
+  this.password = await bcrypt.hash(this.password, 12);
+
   // Delete passwordConfirm field
   this.passwordConfirm = undefined;
   next();
 });
 
 userSchema.pre('save', function(next) {
-  // return if the we change the password field OR create a new document
   if (!this.isModified('password') || this.isNew) return next();
 
-  // we substract - 1000ms to make sure that JWT created AFTER the passwordChagedAt 1 second. (JUST A LITTLE BIT OF HACK SOLUTION)
   this.passwordChangedAt = Date.now() - 1000;
   next();
 });
@@ -70,7 +73,6 @@ userSchema.pre('save', function(next) {
 userSchema.pre(/^find/, function(next) {
   // this points to the current query
   this.find({ active: { $ne: false } });
-
   next();
 });
 
@@ -78,21 +80,20 @@ userSchema.methods.correctPassword = async function(
   candidatePassword,
   userPassword
 ) {
-  return await bycrypt.compare(candidatePassword, userPassword);
+  return await bcrypt.compare(candidatePassword, userPassword);
 };
 
-userSchema.methods.chagedPasswordAfter = function(JWTTimestamp) {
+userSchema.methods.changedPasswordAfter = function(JWTTimestamp) {
   if (this.passwordChangedAt) {
     const changedTimestamp = parseInt(
       this.passwordChangedAt.getTime() / 1000,
       10
     );
 
-    console.log(changedTimestamp, JWTTimestamp);
     return JWTTimestamp < changedTimestamp;
   }
 
-  // false means NOT chaged
+  // False means NOT changed
   return false;
 };
 
@@ -103,8 +104,10 @@ userSchema.methods.createPasswordResetToken = function() {
     .createHash('sha256')
     .update(resetToken)
     .digest('hex');
-  console.log({ resetToken }, this.passwordResetToken);
-  this.passwordResetExpires = Date.now() + 10 * 60 * 1000; // expires in 10 minutes
+
+  // console.log({ resetToken }, this.passwordResetToken);
+
+  this.passwordResetExpires = Date.now() + 10 * 60 * 1000;
 
   return resetToken;
 };
